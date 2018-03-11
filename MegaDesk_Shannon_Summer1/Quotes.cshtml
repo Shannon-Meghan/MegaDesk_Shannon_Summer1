@@ -1,0 +1,46 @@
+﻿@{
+    Layout = "~/_Layout.cshtml";
+    Page.Title = "Add a Quote";
+
+    var db = Database.Open("Quotes");
+    var selectCommand = "SELECT * FROM QuotesTable";
+    var searchTerm = "";
+
+    if (!Request.QueryString["searchName"].IsEmpty())
+    {
+        selectCommand = "SELECT * FROM QuotesTable WHERE CustomerName LIKE @0";
+        searchTerm = "%" + Request["searchName"] + "%";
+    }
+
+    var selectedData = db.Query(selectCommand, searchTerm);
+    var grid = new WebGrid(source: selectedData, defaultSort: "CustomerName", rowsPerPage: 5);
+
+}
+    <form method="get">
+        <div>
+            <label for="SearchName">Search for Customer Name:</label>
+            <input type="text" name="searchName" value="@Request.QueryString["searchName"]" />
+            <input type="Submit" value="Search Name" class="inputButton" /><br />
+        </div>
+    </form>
+
+    @grid.GetHtml(
+                    tableStyle: "grid",
+                    headerStyle: "head",
+                    alternatingRowStyle: "alt",
+                    columns: grid.Columns(
+                        grid.Column(format: @<a href="~/EditQuote?id=@item.ID">Edit</a>),
+                                grid.Column("CustomerName"),
+                                grid.Column("Width", canSort: false),
+                                grid.Column("Depth", canSort: false),
+                                grid.Column("Date"),
+                                grid.Column("Material"),
+                                grid.Column("RushDays", canSort: false),
+                                grid.Column("Total", canSort: false),
+                                grid.Column("DrawerNum", canSort: false),
+                                grid.Column(format: @<a href="~/DeleteQuote?id=@item.ID">Delete</a>)
+                                    )
+                                )
+    <p>
+        <a href="~/AddQuote" id="addQuote">Add a quote</a>
+    </p>

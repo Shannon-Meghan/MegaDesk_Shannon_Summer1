@@ -1,0 +1,300 @@
+﻿@{
+    Layout = "~/_Layout.cshtml";
+    Page.Title = "Edit a Quote";
+
+    
+    var customername = "";
+    var width = "";
+    var depth = "";
+    var date = "";
+    var material = "";
+    var rushdays = "";
+    float totalfl = 0;
+    var total = "";
+    var drawernum = "";
+    var quotesId = "";
+
+
+    if (!IsPost)
+    {
+        if (!Request.QueryString["ID"].IsEmpty() && Request.QueryString["ID"].IsInt())
+        {
+            quotesId = Request.QueryString["ID"];
+            var db = Database.Open("Quotes");
+            var dbCommand = "SELECT * FROM QuotesTable WHERE ID = @0";
+            var row = db.QuerySingle(dbCommand, quotesId);
+
+            if (row != null)
+            {
+                customername = row.CustomerName;
+                width = row.Width;
+                depth = row.Depth;
+                date = row.Date;
+                material = row.Material;
+                rushdays = row.RushDays;
+                total = row.Total;
+                drawernum = row.DrawerNum;
+            }
+            else
+            {
+                Validation.AddFormError("No quote was found for that ID.");
+            }
+        }
+        else
+        {
+            Validation.AddFormError("No quote was found for that ID.");
+        }
+    }
+
+    if (IsPost)
+    {
+        Validation.RequireField("customername", "You must enter a name");
+        Validation.RequireField("width", "You must enter a width between 24 and 96");
+        Validation.RequireField("depth", "You must enter a depth between 12 and 48");
+        Validation.RequireField("material", "You must enter a material");
+        Validation.RequireField("rushdays", "You must enter a rush day");
+        Validation.RequireField("drawernum", "You must enter an amount of drawers between 0 and 7");
+
+        Validation.Add("width", Validator.Float("You must enter a number between 24 and 96"));
+        Validation.Add("depth", Validator.Float("You must enter a number between 12 and 48"));
+        Validation.Add("drawernum", Validator.Float("You must enter a number between 0 and 7"));
+
+        Validation.Add("width", Validator.Range(24, 96, "You must enter a number between 24 and 96"));
+        Validation.Add("depth", Validator.Range(12, 48, "You must enter a number between 12 and 48"));
+        Validation.Add("drawernum", Validator.Range(0, 7, "You must enter a number between 0 and 7"));
+
+        customername = Request.Form["customername"];
+        width = Request.Form["width"];
+        depth = Request.Form["depth"];
+        material = Request.Form["material"];
+        rushdays = Request.Form["rushdays"];
+        drawernum = Request.Form["drawernum"];
+        quotesId = Request.Form["quotesId"];
+        date = Convert.ToString(DateTime.Now);
+
+        //Calculate Total
+        var widthFloat = width.AsFloat();
+        var depthFloat = depth.AsFloat();
+        var drawerNumInt = drawernum.AsInt();
+        int materialcost = 0;
+        int rushdayint = 0;
+        float surfacearea = 0;
+        float surfaceareacost = 0;
+        float drawercost = 0;
+        float rushordercost = 0;
+
+        switch (material)
+        {
+            case "pine":
+                materialcost = 50;
+                break;
+            case "laminate":
+                materialcost = 100;
+                break;
+            case "veneer":
+                materialcost = 125;
+                break;
+            case "oak":
+                materialcost = 200;
+                break;
+            case "rosewood":
+                materialcost = 300;
+                break;
+        }
+
+        switch (rushdays)
+        {
+            case "3 days":
+                rushdayint = 1;
+                break;
+            case "5 days":
+                rushdayint = 2;
+                break;
+            case "7 days":
+                rushdayint = 3;
+                break;
+            default:
+                rushdayint = 0;
+                break;
+        }
+
+        surfacearea = SurfaceArea(widthFloat, depthFloat);
+        surfaceareacost = SurfaceAreaCost(surfacearea);
+        drawercost = DrawerCost(drawerNumInt);
+        rushordercost = RushOrderCost(rushdayint, surfacearea);
+
+        totalfl = CalculateQuoteTotal(surfaceareacost, drawercost, materialcost, rushordercost);
+        total = Convert.ToString(totalfl);
+
+
+
+        if (Validation.IsValid())
+        {
+            var db = Database.Open("Quotes");
+            var updateCommand = "UPDATE QuotesTable SET CustomerName=@0, Width=@1, Depth=@2, Date=@3, Material=@4, RushDays=@5, Total=@6, DrawerNum=@7 WHERE Id=@8";
+            db.Execute(updateCommand, customername, width, depth, date, material, rushdays, total, drawernum, quotesId);
+            Response.Redirect("~/Quotes");
+        }
+    }
+}
+
+@functions {
+
+
+    public float SurfaceArea(float width, float depth)
+    {
+        // calculate Surface Area member variable for use in multiple functions
+        float surfacearea;
+        return surfacearea = width * depth;
+    }
+
+    public float SurfaceAreaCost(float surfaceArea)
+    {
+        int sizeThreshold = 1000;
+        int pricePerSurfaceArea = 1;
+
+        // Determine if additional cost is warrented with desk areas greater than desktop size threshold
+        if (surfaceArea > sizeThreshold)
+        {
+            return (surfaceArea - sizeThreshold) * pricePerSurfaceArea;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    //DrawerCost
+    public float DrawerCost(int drawerNum)
+    {
+        int pricePerDrawer = 50;
+        return drawerNum * pricePerDrawer;
+    }
+
+    //Rush Order Cost
+    public int RushOrderCost(int rushDays, float surfacearea)
+    {
+        int sizeThreshold = 1000;  // inches squared
+        int rushThreshold = 2000;  // inches squared
+        int rushCost = 0;
+
+        switch (rushDays)
+        {
+            case 1:
+                if (surfacearea < sizeThreshold)
+                {
+                    rushCost = 60;
+                }
+                else if (surfacearea > sizeThreshold && surfacearea <= rushThreshold)
+                {
+                    rushCost = 70;
+                }
+                else
+                {
+                    rushCost = 80;
+                }
+                break;
+            case 2:
+                if (surfacearea < sizeThreshold)
+                {
+                    rushCost = 40;
+                }
+                else if (surfacearea > sizeThreshold && surfacearea <= rushThreshold)
+                {
+                    rushCost = 50;
+                }
+                else
+                {
+                    rushCost = 60;
+                }
+                break;
+            case 3:
+                if (surfacearea < sizeThreshold)
+                {
+                    rushCost = 30;
+                }
+                else if (surfacearea > sizeThreshold && surfacearea <= rushThreshold)
+                {
+                    rushCost = 35;
+                }
+                else
+                {
+                    rushCost = 40;
+                }
+                break;
+            default:
+                rushCost = 0;
+                break;
+        }
+        return rushCost;
+
+    }
+    //Material Cost
+    public enum DesktopMaterial
+    {
+        Pine = 50,
+        Laminate = 100,
+        Oak = 200,
+        Rosewood = 300,
+        Veneer = 125
+    }
+
+    public float CalculateQuoteTotal(float surfaceAreaCost, float drawerCost, int materialCost, float rushOrderCost)
+    {
+        int priceBase = 200;
+        float total;
+        total = priceBase + surfaceAreaCost + drawerCost + materialCost + rushOrderCost;
+        return total;
+    }
+}
+    <h2>Edit a Quote</h2>
+    <form method="post">
+        <fieldset>
+            <legend>Quote Information</legend>
+
+            <p>
+                <label for="customername">Customer Name:</label>
+                <input type="text" name="customername" value="@customername" />
+                @Html.ValidationMessage("customername")
+            </p>
+
+            <p>
+                <label for="width">Width:</label>
+                <input type="text" name="width" value="@width" />
+                @Html.ValidationMessage("width")
+            </p>
+
+            <p>
+                <label for="depth">Depth:</label>
+                <input type="text" name="depth" value="@depth" />
+                @Html.ValidationMessage("depth")
+            </p>
+            <p>
+                <label for="material">Material:</label>
+                @Html.RadioButton("material", "pine", true) Pine
+                @Html.RadioButton("material", "laminate", false) Laminate
+                @Html.RadioButton("material", "oak", false) Oak
+                @Html.RadioButton("material", "rosewood", false) Rosewood
+                @Html.RadioButton("material", "veneer", false) Veneer
+                @Html.ValidationMessage("material")
+            </p>
+            <p>
+                <label for="rushdays">Rush Day:</label>
+                @Html.RadioButton("rushdays", "No rush", true) No rush
+                @Html.RadioButton("rushdays", "3 days", false) 3 days
+                @Html.RadioButton("rushdays", "5 days", false) 5 days
+                @Html.RadioButton("rushdays", "7 days", false) 7 days
+                @Html.ValidationMessage("rushdays")
+            </p>
+            <p>
+                <label for="drawernum">Number of Drawers:</label>
+                <input type="text" name="drawernum" value="@drawernum" />
+                @Html.ValidationMessage("drawernum")
+            </p>
+
+            <input type="hidden" name="quotesid" value="@quotesId" />
+
+            <p><input type="submit" name="buttonSubmit" value="Submit Changes" class="inputButton" /></p>
+        </fieldset>
+    </form>
+    <p><a href="~/Quotes">Return to quote listing</a></p>

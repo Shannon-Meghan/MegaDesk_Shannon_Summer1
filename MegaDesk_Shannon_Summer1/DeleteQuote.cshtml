@@ -1,0 +1,97 @@
+﻿@{
+    Layout = "~/_Layout.cshtml";
+    Page.Title = "Delete a Quote";
+
+    var customername = "";
+    var width = "";
+    var depth = "";
+    var date = "";
+    var material = "";
+    var rushdays = "";
+    var total = "";
+    var drawernum = "";
+    var quoteId = "";
+
+    if (!IsPost)
+    {
+        if (!Request.QueryString["ID"].IsEmpty() && Request.QueryString["ID"].IsInt())
+        {
+            quoteId = Request.QueryString["ID"];
+            var db = Database.Open("Quotes");
+            var dbCommand = "SELECT * FROM QuotesTable WHERE ID = @0";
+            var row = db.QuerySingle(dbCommand, quoteId);
+            if (row != null)
+            {
+                customername = row.CustomerName;
+                width = row.Width;
+                depth = row.Depth;
+                date = row.Date;
+                material = row.Material;
+                rushdays = row.RushDays;
+                total = row.Total;
+                drawernum = row.DrawerNum;
+            }
+            else
+            {
+                Validation.AddFormError("No quote was found for that ID.");
+            }
+        }
+        else
+        {
+            Validation.AddFormError("No quote was found for that ID.");
+        }
+    }
+
+    if (IsPost && !Request["buttonDelete"].IsEmpty())
+    {
+        quoteId = Request.Form["quoteId"];
+        var db = Database.Open("Quotes");
+        var deleteCommand = "DELETE FROM QuotesTable WHERE ID = @0";
+        db.Execute(deleteCommand, quoteId);
+        Response.Redirect("~/Quotes");
+    }
+}
+    <h2>Delete a Quote</h2>
+    @Html.ValidationSummary()
+
+    <form method="post">
+        <fieldset>
+            <legend>Quote Information</legend>
+
+            <p>
+                <span>Customer Name:</span>
+                <span>@customername</span>
+            </p>
+            <p>
+                <span>Width:</span>
+                <span>@width</span>
+            </p>
+            <p>
+                <span>Depth:</span>
+                <span>@depth</span>
+            </p>
+            <p>
+                <span>Date:</span>
+                <span>@date</span>
+            </p>
+            <p>
+                <span>Material:</span>
+                <span>@material</span>
+            </p>
+            <p>
+                <span>Amount of rush days:</span>
+                <span>@rushdays</span>
+            </p>
+            <p>
+                <span>Amound of Drawers:</span>
+                <span>@drawernum</span>
+            </p>
+            <p>
+                <span>Total:</span>
+                <span>@total</span>
+            </p>
+            <input type="hidden" name="quoteId" value="@quoteId" />
+            <p><input type="submit" name="buttonDelete" value="Delete Quote" class="inputButton" /></p>
+        </fieldset>
+        <p><a href="~/Quotes">Return to quote listing</a></p>
+    </form>
